@@ -3,8 +3,13 @@ package emg.demo.dbunit;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 
 import javax.sql.DataSource;
+
+import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.ResultSetHandler;
 
 public class PersonRepository {
 	private DataSource datasource;
@@ -32,4 +37,37 @@ public class PersonRepository {
 		return person;
 	}
 
+	public Object[]  insertPerson(Person person) throws Exception {
+		final String sql = "insert into PERSON (ID, NAME, LAST_NAME, AGE) values (?,?,?,?)";
+		Object[] params = { person.getId(), person.getFirstName(), person.getLastName(), person.getAge() };
+		QueryRunner runner = new QueryRunner();
+		Object[] inResult = null;
+		try (Connection conn = datasource.getConnection()) {
+			// result = runner.update(conn, sql, params);
+			ResultSetHandler<Object[]> h = new ResultSetHandler<Object[]>() {
+				public Object[] handle(ResultSet rs) throws SQLException {
+					if (!rs.next()) {
+						return null;
+					}
+
+					ResultSetMetaData meta = rs.getMetaData();
+					int cols = meta.getColumnCount();
+					Object[] result = new Object[cols];
+
+					for (int i = 0; i < cols; i++) {
+						result[i] = rs.getObject(i + 1);
+					}
+
+					return result;
+				}
+			};
+
+			inResult = runner.insert(conn, sql, h, params);
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		return inResult;
+	}
 }
